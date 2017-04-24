@@ -1,0 +1,12 @@
+# timesheet
+# line with just a day/month starts a new day/month
+# line with tenrox nickname comma description with any text (including commas) comma minutes
+# Ex:
+# int,all hands meeting,45
+# client1,standup, grooming, whatever,120
+
+4/24
+int,all hands,45
+ashley,tech questions,30
+petsmart, dev questions, checkin, 30
+int,timesheet,30
