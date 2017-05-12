@@ -1,0 +1,29 @@
+{
+  "name": "timesheets",
+  "version": "1.0.0",
+  "description": "Timesheet tracker using project keys, simple notes, and minutes spent on an activity",
+  "main": "timesheet.js",
+  "dependencies": {
+    "colors": "^1.1.2",
+    "winston": "^2.3.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lawrencewalters/timesheets.git"
+  },
+  "keywords": [
+    "node",
+    "timesheets",
+    "lyonscg"
+  ],
+  "author": "Lawrence Walters",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/lawrencewalters/timesheets/issues"
+  },
+  "homepage": "https://github.com/lawrencewalters/timesheets#readme"
+}

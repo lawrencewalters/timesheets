@@ -1,5 +1,9 @@
 // run with node timesheet.js
 // hardcoded to look for data.txt
+const winston = require('winston')
+winston.level = process.env.LOG_LEVEL;
+var colors = require('colors');
+
 var summary = {};
 var current = '';
 var daytotal = 0;
@@ -33,7 +37,7 @@ function toHours(minutes) {
 }
 
 function parse(line) {
-    console.log(line);
+    winston.log('info',line);
     if(line[0] == '#') return;
     if(line.match(/^\d+\/\d+$/)) {
       current = line;
@@ -41,11 +45,11 @@ function parse(line) {
     }
     else if(line.match(/^([^,]+),(.+)\b(\d+)$/)) {
       match = line.match(/^([^,]+),(.+)\b(\d+)$/);
-      console.log(' id:', match[1],'\n comments:', match[2], '\n minutes:',match[3]);
+      winston.log('info',' id:', match[1],'\n comments:', match[2], '\n minutes:',match[3]);
       if(!(match[1] in summary[current])) {
         summary[current][match[1]] = {'comments':'','minutes':0};
       }
-        
+
       summary[current][match[1]].comments += match[2];
       summary[current][match[1]].minutes += Number(match[3]);
       summary[current].daytotal += Number(match[3]);
