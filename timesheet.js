@@ -16,7 +16,8 @@ lineReader.on('close', function () {
   totals = {};
   for (var day in summary) {
     if (summary.hasOwnProperty(day)) {
-      console.log(day.toString().bgWhite.blue, toHours(summary[day].daytotal).white.bgGreen);
+      process.stdout.write(day.toString().bgWhite.blue + ' ' + toHours(summary[day].daytotal).white.bgGreen + ' ');
+      // console.log(day.toString().bgWhite.blue, toHours(summary[day].daytotal).white.bgGreen);
       display(summary[day], totals);
     }
   }
@@ -24,16 +25,18 @@ lineReader.on('close', function () {
 });
 
 function display(day, totals) {
+  var space = '';
   for (var key in day) {
     if (day.hasOwnProperty(key)) {
       if (key != 'daytotal') {
         totals[key] = (totals[key] || 0) + day[key].minutes;
-        console.log(key.rainbow, ' : ', toHours(day[key].minutes).magenta);
-        console.log(day[key].comments);
+        console.log(space, key.rainbow, ' : ', toHours(day[key].minutes).magenta, " : ", day[key].comments);
+        // console.log(day[key].comments);
+        space = '          ';
       }
     }
   }
-  console.log('----------');
+  // console.log('----------');
 }
 
 function displayTotals(totals) {
