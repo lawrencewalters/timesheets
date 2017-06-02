@@ -1,28 +1,40 @@
 // run with node timesheet.js
 // hardcoded to look for data.txt
-const winston = require('winston')
-  winston.level = process.env.LOG_LEVEL;
+var fs = require('fs');
+var winston = require('winston');
+winston.level = process.env.LOG_LEVEL;
 var colors = require('colors');
+var datafile = 'data.txt';
+var colorMap = new Map();
 
-var summary = {};
-var current = '';
-var daytotal = 0;
-var lineReader = require('readline').createInterface({
-    input: require('fs').createReadStream('data.txt')
+processFile(datafile);
+fs.watchFile(datafile, (curr, prev) => {
+  console.log('hello');
+  processFile(datafile);
+});
+
+function processFile(filename) {
+  var summary = {};
+  var current = '';
+  var daytotal = 0;
+  var lineReader = require('readline').createInterface({
+      input: require('fs').createReadStream(filename)
+    });
+
+  lineReader.on('line', (input) => { parse(input, summary) });
+  lineReader.on('close', function () {
+    totals = {};
+    for (var day in summary) {
+      if (summary.hasOwnProperty(day)) {
+        process.stdout.write(day.toString().bgWhite.blue + ' ' + toHours(summary[day].daytotal).white.bgGreen + ' ');
+        // console.log(day.toString().bgWhite.blue, toHours(summary[day].daytotal).white.bgGreen);
+        display(summary[day], totals);
+      }
+    }
+    displayTotals(totals);
   });
 
-lineReader.on('line', parse);
-lineReader.on('close', function () {
-  totals = {};
-  for (var day in summary) {
-    if (summary.hasOwnProperty(day)) {
-      process.stdout.write(day.toString().bgWhite.blue + ' ' + toHours(summary[day].daytotal).white.bgGreen + ' ');
-      // console.log(day.toString().bgWhite.blue, toHours(summary[day].daytotal).white.bgGreen);
-      display(summary[day], totals);
-    }
-  }
-  displayTotals(totals);
-});
+}
 
 function display(day, totals) {
   var space = '';
@@ -30,30 +42,47 @@ function display(day, totals) {
     if (day.hasOwnProperty(key)) {
       if (key != 'daytotal') {
         totals[key] = (totals[key] || 0) + day[key].minutes;
-        console.log(space, key.rainbow, ' : ', toHours(day[key].minutes).magenta, " : ", day[key].comments);
-        // console.log(day[key].comments);
+        console.log(colorByKey(key, space + key + ' : ' + toHours(day[key].minutes) + " : " + day[key].comments));
         space = '          ';
       }
     }
   }
-  // console.log('----------');
+}
+
+
+function colorByKey(key, text) {
+  console.log(colorMap, colorMap.size);
+  if(!(key in colorMap)) {
+    colorMap.set(key, colorMap.size + 1);
+  }
+  console.log(colorMap);
+  switch(colorMap[key]) {
+    case "1":
+      return text.red;
+    case 2:
+      return text.blue;
+    case 3:
+      return text.green;
+    default:
+      return text;
+  }
 }
 
 function displayTotals(totals) {
   total = 0;
-  console.log('Totals by Project\n==============');
+  msg = '';
   for (var key in totals) {
     total += totals[key];
-    console.log(key.rainbow, ' : ', toHours(totals[key]).magenta);
+    msg = msg + key + ':' + toHours(totals[key]).magenta + ' | ';
   }
-  console.log('Total:', toHours(total).magenta);
+  console.log(toHours(total).magenta + ': ' + msg);
 }
 
 function toHours(minutes) {
   return (Math.floor(minutes / 60)) + ':' + ((minutes % 60) < 9 ? ('0' + (minutes % 60)) : (minutes % 60));
 }
 
-function parse(line) {
+function parse(line, summary) {
   winston.log('info', line);
   if (line[0] == '#')
     return;
