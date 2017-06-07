@@ -51,18 +51,22 @@ function display(day, totals) {
 
 
 function colorByKey(key, text) {
-  console.log(colorMap, colorMap.size);
-  if(!(key in colorMap)) {
+  if(!colorMap.has(key)) {
     colorMap.set(key, colorMap.size + 1);
   }
-  console.log(colorMap);
-  switch(colorMap[key]) {
-    case "1":
-      return text.red;
-    case 2:
-      return text.blue;
-    case 3:
+  switch(colorMap.get(key)) {
+    case 1:
       return text.green;
+    case 2:
+      return text.yellow;
+    case 3:
+      return text.blue;
+    case 4:
+      return text.magenta;
+    case 5:
+      return text.cyan;
+    case 6:
+      return text.gray;
     default:
       return text;
   }
