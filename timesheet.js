@@ -1,15 +1,19 @@
-// run with node timesheet.js
-// hardcoded to look for data.txt
+// run with node timesheet.js [datafile]
+// datafile is optional parameter to specify what file to parse. defaults to current directory 'data.txt'
 var fs = require('fs');
 var winston = require('winston');
 winston.level = process.env.LOG_LEVEL;
 var colors = require('colors');
-var datafile = 'data.txt';
 var colorMap = new Map();
+var datafile = 'data.txt';
+process.argv.forEach(function (val, index, array) {
+  if(index > 1){
+    datafile = val;
+  }
+});
 
 processFile(datafile);
-fs.watchFile(datafile, (curr, prev) => {
-  console.log('hello');
+fs.watchFile(datafile, function(curr,prev) { 
   processFile(datafile);
 });
 
@@ -21,7 +25,7 @@ function processFile(filename) {
       input: require('fs').createReadStream(filename)
     });
 
-  lineReader.on('line', (input) => { parse(input, summary) });
+  lineReader.on('line', function(input) { parse(input, summary) });
   lineReader.on('close', function () {
     totals = {};
     for (var day in summary) {
@@ -48,7 +52,6 @@ function display(day, totals) {
     }
   }
 }
-
 
 function colorByKey(key, text) {
   if(!colorMap.has(key)) {
