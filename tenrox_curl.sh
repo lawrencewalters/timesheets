@@ -1,0 +1,2 @@
+#!/bin/sh
+curl --data grant_type=password --data username=$TENROX_USER --data-urlencode "password=${TENROX_PASS}" "https://$TENROX_HOST/TEnterprise/api/token" --header "Content-Type: applica tion/json"  --header "OrgName: $TENROX_ORG" -i
