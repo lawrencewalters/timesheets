@@ -234,7 +234,6 @@ function getTimeSheetInfo(session, uniqueUserId, date) { // returns timesheet id
                 defer.reject(error);
             } else {
                 var parsed = JSON.parse(body);
-
                 defer.resolve({
                     "timesheetId": parsed.UniqueId,
                     "tasks": Object.keys(parsed.AssignmentAttributes).map(key => {
