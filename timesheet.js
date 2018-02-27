@@ -56,7 +56,7 @@ function display(day, totals) {
 
 function displayGrid(summary, totals) {
     var projectHoursByDay = {};
-    console.log('       ' + Object.keys(summary).join('  '));
+    console.log('      ' + Object.keys(summary).join('   '));
     for (var day in summary) {
         for (var projectKey in summary[day]) {
             if (projectKey != 'daytotal') {
@@ -68,7 +68,7 @@ function displayGrid(summary, totals) {
         }
     }
     for (var projectKey in projectHoursByDay) {
-        console.log(colorByKey(projectKey, projectKey + ':   ' +
+        console.log(colorByKey(projectKey, ('     ' + projectKey + ': ').slice(-6) +
             Object.keys(summary).map(function (day) {
                 if (projectHoursByDay[projectKey][day]) {
                     return toHours(projectHoursByDay[projectKey][day]);
