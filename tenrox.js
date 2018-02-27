@@ -12,12 +12,34 @@ $ TENROX_USER=asdf TENROX_PASS="bar" TENROX_HOST=acme.tenrox.net TENROX_ORG=Acme
 
 */
 
+var q = require('q');
 var request = require('request');
 var util = require('util');
 var fs = require('fs');
 var prettyjson = require('prettyjson');
 var cookie = null;
 var opts = null;
+
+/*
+auth - get a token
+get unique user id (requires auth)
+get current timesheet (gets tasks, timesheet id, unique user id)
+write an entry (needs task id, timesheet id)
+
+getTimeSheetInfo(session, unique user id, date) returns timesheet id, [{task name, id}]
+
+assignTaskIds(session, entries) returns entries [{task id, date, hours, notes}]
+
+writeEntry(session, timesheet id, task, date, hours, notes) returns promise
+
+getSession()
+    .then(getUniqueUserId)
+    .then(getTimeSheetInfo)
+    .then(getEntries)
+    .then(assignTaskIds)
+    .then(writeEntries);
+
+*/
 
 function auth(callback) {
     if (opts != null) {
@@ -147,9 +169,114 @@ function logTimeWithNotes(error, response, body) {
             console.log('timesheets body:', body);
         });
 }
-// TODO: map task IDs to what goes in the notes (TaskUid)
-//   - get a list of tasks ?
-// TODO: 1x update of all things
-// TODO: check totals and update if different?
 
-makeEntry();
+function getSession(host, org, user, password) {
+    defer = q.defer()
+    console.log('getting new session token');
+    request.post({
+        url: 'https://' + host + '/TEnterprise/api/token',
+        headers: { OrgName: org },
+        body: 'grant_type=password&username=' + user + '&password=' + encodeURIComponent(password)
+    },
+        function (error, response, body) {
+            if (error) {
+                defer.reject(error);
+            } else {
+                defer.resolve({
+                    "host": host,
+                    "user": user,
+                    "headers": {
+                        "Cookie": response.headers['set-cookie'],
+                        "authorization": "Bearer " + JSON.parse(body).access_token,
+                        "Content-Type": "application/json",
+                        OrgName: org
+                    }
+                });
+            }
+        });
+    return defer.promise;
+}
+
+function getUniqueUserId(session) {
+    defer = q.defer();
+    console.log("getting unique user id");
+    request.get({
+        headers: session.headers,
+        url: "https://" + session.host + "/TEnterprise/api/v2/Users/?$filter=LoginName eq '" + session.user + "'"
+    },
+        function (error, response, body) {
+            if (error) {
+                defer.reject(error);
+            } else if (body === 'Invalid token.') {
+                defer.reject("Error looking up user id: invalid token");
+            } else if (body === '[]') {
+                defer.reject("Error looking up user id for user '" + user + "'");
+            } else {
+                defer.resolve(JSON.parse(body)[0].UniqueId);
+            }
+        }
+    );
+    return defer.promise;
+}
+
+function getTimeSheetInfo(session, uniqueUserId, date) { // returns timesheet id, [{task name, id}]
+    defer = q.defer();
+    console.log("getting timesheet info");
+    request.get({
+        headers: session.headers,
+        url: "https://" + session.host + "/TEnterprise/api/Timesheets/?UserId=" + uniqueUserId +
+        "&anyDate=" + ("0" + (date.getMonth() + 1)).slice(-2) + '-'
+        + ("0" + date.getDate()).slice(-2) + '-'
+        + date.getFullYear()
+    },
+        function (error, response, body) {
+            if (error) {
+                defer.reject(error);
+            } else {
+                var parsed = JSON.parse(body);
+
+                defer.resolve({
+                    "timesheetId": parsed.UniqueId,
+                    "tasks": Object.keys(parsed.AssignmentAttributes).map(key => {
+                        return {
+                            TaskUid: parsed.AssignmentAttributes[key].TaskUid,
+                            AssignmentName: parsed.AssignmentAttributes[key].AssignmentName,
+                            ProjectName: parsed.AssignmentAttributes[key].ProjectName
+                        }
+                    })
+                });
+            }
+        }
+    );
+    return defer.promise;
+}
+
+function processTimeSheet(session) {
+    defer = q.defer();
+    getUniqueUserId(session)
+        .then(function (uniqueUserId) {
+            return getTimeSheetInfo(session, uniqueUserId, new Date());
+        })
+        // .then(getEntries)
+        // .then(assignTaskIds)
+        // .then(writeEntries);
+        .then(console.log)
+        .catch(function (error) {
+            console.log("Error: " + error);
+        });
+    // TODO: map task IDs to what goes in the notes (TaskUid)
+    //   - get a list of tasks ?
+    // TODO: 1x update of all things
+    // TODO: check totals and update if different?
+
+    return defer.promise;
+}
+
+getSession(process.env.TENROX_HOST,
+    process.env.TENROX_ORG,
+    process.env.TENROX_USER,
+    process.env.TENROX_PASS)
+    .then(processTimeSheet)
+    .catch(function (error) {
+        console.log("Error: " + error);
+    });
