@@ -1,20 +1,25 @@
-/** Tenrox API
-REQUEST:
-curl --data grant_type=password --data username=$TENROX_USER --data-urlencode "password=${TENROX_PASS}" "https://$TENROX_HOST/TEnterprise/api/token" --header "Content-Type: applica tion/json"  --header "OrgName: $TENROX_ORG" -i
+/** 
+Timesheet to tenrox updating
 
+Parameters for this script:
 TENROX_USER - tenrox username
 TENROX_PASS - password
 TENROX_HOST - host that serves your tenrox instance. double quote if you got fancy chars
 TENROX_ORG - organization / company code for your tenrox instance. generally case sensitive ?
+TIMESHEET_FILE - filename that contains timesheet entries
+LOG_LEVEL - debug,info,warn,error
 
 execute this script like:
-$ TENROX_USER=asdf TENROX_PASS="bar" TENROX_HOST=acme.tenrox.net TENROX_ORG=Acme node tenrox.js
+$ TIMESHEET_FILE='c:\timesheet_data.txt'
+TENROX_USER=asdf TENROX_PASS="bar" TENROX_HOST=acme.tenrox.net TENROX_ORG=Acme node tenrox.js
+
 */
 
 var q = require('q');
 var request = require('request');
 var util = require('util');
 var fs = require('fs');
+var readline = require('readline');
 var prettyjson = require('prettyjson');
 var winston = require('winston');
 var colors = require('colors');
@@ -22,35 +27,31 @@ var colors = require('colors');
 var colorMap = new Map();
 winston.level = process.env.LOG_LEVEL;
 
-var cookie = null;
-var opts = null;
+var session = {};
+var summary = {};
 
-getSession(process.env.TENROX_HOST,
-    process.env.TENROX_ORG,
-    process.env.TENROX_USER,
-    process.env.TENROX_PASS)
-    .then(processTimeSheet)
+processFile(process.env.TIMESHEET_FILE)
+    .then(function (result) {
+        summary = result;
+        return getSession(process.env.TENROX_HOST,
+            process.env.TENROX_ORG,
+            process.env.TENROX_USER,
+            process.env.TENROX_PASS)
+    })
+    .then(function (result) {
+        session = result;
+        return getUniqueUserId(session);
+    })
+    .then(function (uniqueUserId) {
+        return getTimeSheetInfo(session, uniqueUserId, new Date());
+    })
+    // .then(assignTaskIds)
+    // .then(writeEntries);
+    .then(console.log)
     .catch(function (error) {
         console.log("Error: " + error);
     });
 
-function processTimeSheet(session) {
-    defer = q.defer();
-    getUniqueUserId(session)
-        .then(function (uniqueUserId) {
-            return getTimeSheetInfo(session, uniqueUserId, new Date());
-        })
-        .then(processFile)
-        // .then(assignTaskIds)
-        // .then(writeEntries);
-        .then(console.log)
-        .catch(function (error) {
-            console.log("Error: " + error);
-        });
-    // TODO: check totals and update if different?
-
-    return defer.promise;
-}
 
 function logTimeWithNotes(error, response, body) {
     if (error) { console.log('timesheets error:', error); }
@@ -99,6 +100,10 @@ function logTimeWithNotes(error, response, body) {
         });
 }
 
+/* Tenrox API
+curl based request for testing getting a token
+curl --data grant_type=password --data username=$TENROX_USER --data-urlencode "password=${TENROX_PASS}" "https://$TENROX_HOST/TEnterprise/api/token" --header "Content-Type: applica tion/json"  --header "OrgName: $TENROX_ORG" -i
+ */
 function getSession(host, org, user, password) {
     defer = q.defer()
     console.log('getting new session token');
@@ -179,20 +184,30 @@ function getTimeSheetInfo(session, uniqueUserId, date) { // returns timesheet id
     return defer.promise;
 }
 
-function processFile() {
-    var filename = 'c:\\users\\lwalters\\docs\\proj\\timesheet_data.txt'
+function processFile(filename) {
     defer = q.defer();
     var summary = {};
     var current = '';
     var daytotal = 0;
-    var lineReader = require('readline').createInterface({
-        input: require('fs').createReadStream(filename)
-    });
 
-    lineReader.on('line', function (input) { parse(input, summary) });
-    lineReader.on('close', function () {
-        defer.resolve(summary);
-    });
+    try {
+        var lineReader = readline.createInterface({
+            input: fs.createReadStream(filename)
+                .on('error', function (err) {
+                    defer.reject('Error creating read stream for file ' + filename + ': ' + err);
+                })
+        });
+        lineReader.on('line', function (input) { parse(input, summary) });
+        lineReader.on('close', function () {
+            defer.resolve(summary);
+        });
+        lineReader.on('error', function (err) {
+            defer.reject('Error reading file lines for file ' + filename + ': ' + err);
+        })
+    } catch (err) {
+        defer.reject("processFile error with file '" + filename + "': " + err);
+    }
+
     return defer.promise;
 }
 
