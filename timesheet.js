@@ -2,9 +2,11 @@
 // datafile is optional parameter to specify what file to parse. defaults to current directory 'data.txt'
 var fs = require('fs');
 var winston = require('winston');
-winston.level = process.env.LOG_LEVEL;
 var colors = require('colors');
+
 var colorMap = new Map();
+winston.level = process.env.LOG_LEVEL;
+
 var datafile = 'data.txt';
 process.argv.forEach(function (val, index, array) {
     if (index > 1) {
@@ -31,14 +33,12 @@ function processFile(filename) {
         for (var day in summary) {
             if (summary.hasOwnProperty(day)) {
                 process.stdout.write(day.toString().bgWhite.blue + ' ' + toHours(summary[day].daytotal).white.bgGreen + ' ');
-                // console.log(day.toString().bgWhite.blue, toHours(summary[day].daytotal).white.bgGreen);
                 display(summary[day], totals);
             }
         }
         displayTotals(totals);
         displayGrid(summary, totals);
     });
-
 }
 
 function display(day, totals) {
