@@ -17,18 +17,15 @@ TENROX_USER=asdf TENROX_PASS="bar" TENROX_HOST=acme.tenrox.net TENROX_ORG=Acme n
 
 var q = require('q');
 var request = require('request');
-var util = require('util');
 var fs = require('fs');
 var readline = require('readline');
-var prettyjson = require('prettyjson');
 var winston = require('winston');
-var colors = require('colors');
-
-var colorMap = new Map();
 winston.level = process.env.LOG_LEVEL;
 
-var session = {};
-var summary = {};
+var tasks = { "ash": "12454", "col": "10520", "intp": "4370", "intm": "4369" }
+
+var session = {},
+    summary = {};
 
 processFile(process.env.TIMESHEET_FILE)
     .then(function (result) {
@@ -43,27 +40,61 @@ processFile(process.env.TIMESHEET_FILE)
         return getUniqueUserId(session);
     })
     .then(function (uniqueUserId) {
-        return getTimeSheetInfo(session, uniqueUserId, new Date());
+        return getTimesheetInfo(session, uniqueUserId, new Date());
     })
     // .then(assignTaskIds)
-    // .then(writeEntries);
-    .then(console.log)
+    .then(function (timesheetInfo) {
+        return writeEntries(session, summary, timesheetInfo.timesheetId);
+    })
+    .then(winston.info)
     .catch(function (error) {
-        console.log("Error: " + error);
+        winston.error("Error: " + error);
     });
 
+/**
+ * 
+ * @param {object} session
+ * @param {object} entries 
+ * @param {string} timesheetId 
+ * @returns {object} promise
+ */
+function writeEntries(session, entries, timesheetId) {
+    // defer = q.defer();
+    var promises = [];
+    for (var day in summary) {
+        var entryDate = new Date();
+        winston.debug("Day: " + day);
+        entryDate.setMonth(Number.parseInt(day.substring(0, day.indexOf('/'))) - 1);
+        entryDate.setDate(Number.parseInt(day.substring(day.indexOf('/') + 1)));
+        for (var projectKey in summary[day]) {
+            winston.debug("Projectkey: " + projectKey);
+            //TODO: refactor original collection to make sure we're not mixing project keys with this total 
+            if (projectKey != 'daytotal') {
+                promises.push(logTimeWithNotes(session, timesheetId, tasks[projectKey], summary[day][projectKey]["notes"], entryDate, summary[day][projectKey]["minutes"]));
+            }
+        }
+    }
+    return q.all(promises);
+    // return defer.promise;
+}
 
-function logTimeWithNotes(error, response, body) {
-    if (error) { console.log('timesheets error:', error); }
-    console.log('timesheets statusCode:', response && response.statusCode);
-    var timesheetId = JSON.parse(body).UniqueId;
-    var now = new Date();
-    fs.writeFileSync('./tenrox_timesheet_data.json', body);
+/**
+ * 
+ * @param {object} session 
+ * @param {string} timesheetId
+ * @param {string} taskId 
+ * @param {string} notes 
+ * @param {Date} entryDate 
+ * @param {int} minutes 
+ */
+function logTimeWithNotes(session, timesheetId, taskId, notes, entryDate, minutes) {
+    winston.info("Logtimewithnotes: " + { taskId, notes, entryDate, minutes });
+    defer = q.defer();
     var putbody = {
         "Notes": [
             {
                 "UniqueId": -1,
-                "Description": "Test time entry from API",
+                "Description": notes,
                 "NoteType": "NOTICE",
                 "IsPublic": true
             }
@@ -72,41 +103,51 @@ function logTimeWithNotes(error, response, body) {
             {
                 "IsAttribute": true,
                 "Property": "task",
-                "Value": 4369
+                "Value": taskId
             },
             {
                 "IsAttribute": false,
                 "Property": "EntryDate",
-                "Value": ("0" + (now.getMonth() + 1)).slice(-2) + '/' + ("0" + now.getDate()).slice(-2) + '/' + now.getFullYear()
+                "Value": ("0" + (entryDate.getMonth() + 1)).slice(-2) + '/' + ("0" + entryDate.getDate()).slice(-2) + '/' + entryDate.getFullYear()
             },
             {
                 "IsAttribute": false,
                 "Property": "RegularTime",
-                "Value": 900
+                "Value": minutes * 60
             }
         ]
     };
-    opts.headers["Content-Type"] = 'application/x-www-form-urlencoded';
-    console.log(JSON.stringify(putbody));
+    session.headers["Content-Type"] = 'application/x-www-form-urlencoded';
+    winston.debug(JSON.stringify(putbody));
     request.put({
-        headers: opts.headers,
-        url: "https://" + process.env.TENROX_HOST + "/TEnterprise/api/Timesheets/" + timesheetId + "?property=TIMEENTRYLITE",
+        headers: session.headers,
+        url: "https://" + session.host + "/TEnterprise/api/Timesheets/" + timesheetId + "?property=TIMEENTRYLITE",
         body: "=" + encodeURIComponent(JSON.stringify(putbody))
     },
         function (error, response, body) {
-            if (error) { console.log('timesheets error:', error); }
-            console.log('timesheets statusCode:', response && response.statusCode);
-            console.log('timesheets body:', body);
+            if (error) {
+                defer.reject(error);
+            } else {
+                winston.debug('timesheets statusCode:', response && response.statusCode);
+                winston.debug('timesheets body:', body);
+                defer.resolve('timesheets statusCode:' + response + ' ' + response.statusCode);
+            }
         });
+    return defer.promise;
 }
 
-/* Tenrox API
-curl based request for testing getting a token
-curl --data grant_type=password --data username=$TENROX_USER --data-urlencode "password=${TENROX_PASS}" "https://$TENROX_HOST/TEnterprise/api/token" --header "Content-Type: applica tion/json"  --header "OrgName: $TENROX_ORG" -i
+/**
+ * Tenrox API curl based request for testing getting a token 
+ * curl --data grant_type=password --data username=$TENROX_USER --data-urlencode "password=${TENROX_PASS}" "https://$TENROX_HOST/TEnterprise/api/token" --header "Content-Type: application/json"  --header "OrgName: $TENROX_ORG" -i
+ * 
+ * @param {string} host 
+ * @param {string} org 
+ * @param {string} user 
+ * @param {string} password 
  */
 function getSession(host, org, user, password) {
     defer = q.defer()
-    console.log('getting new session token');
+    winston.info('getting new session token');
     request.post({
         url: 'https://' + host + '/TEnterprise/api/token',
         headers: { OrgName: org },
@@ -133,7 +174,7 @@ function getSession(host, org, user, password) {
 
 function getUniqueUserId(session) {
     defer = q.defer();
-    console.log("getting unique user id");
+    winston.info('getting unique user id');
     request.get({
         headers: session.headers,
         url: "https://" + session.host + "/TEnterprise/api/v2/Users/?$filter=LoginName eq '" + session.user + "'"
@@ -153,15 +194,22 @@ function getUniqueUserId(session) {
     return defer.promise;
 }
 
-function getTimeSheetInfo(session, uniqueUserId, date) { // returns timesheet id, [{task name, id}]
+/**
+ * Get the timesheet for a given date... so we can edit it later 
+ * @param {object} session 
+ * @param {string} uniqueUserId 
+ * @param {Date} date day in timesheet week
+ * @returns {object} promise with results{timesheetId, tasks}
+ */
+function getTimesheetInfo(session, uniqueUserId, date) {
     defer = q.defer();
-    console.log("getting timesheet info");
+    winston.info("getting timesheet info");
     request.get({
         headers: session.headers,
         url: "https://" + session.host + "/TEnterprise/api/Timesheets/?UserId=" + uniqueUserId +
-        "&anyDate=" + ("0" + (date.getMonth() + 1)).slice(-2) + '-'
-        + ("0" + date.getDate()).slice(-2) + '-'
-        + date.getFullYear()
+            "&anyDate=" + ("0" + (date.getMonth() + 1)).slice(-2) + '-'
+            + ("0" + date.getDate()).slice(-2) + '-'
+            + date.getFullYear()
     },
         function (error, response, body) {
             if (error) {
@@ -211,25 +259,30 @@ function processFile(filename) {
     return defer.promise;
 }
 
+/**
+ * read a single line of timesheet data
+ * @param {string} line single line of timesheet data file, represents project key, notes, minutes OR a date
+ * @param {object} summary keyed map of date => { daytotal, project key => {notes, minutes}}
+ */
 function parse(line, summary) {
-    winston.log('info', line);
+    winston.info(line);
     if (line[0] == '#')
         return;
     if (line.match(/^\d+\/\d+$/)) {
         current = line;
         summary[current] = {
-            'daytotal': 0
+            daytotal: 0
         };
     } else if (line.match(/^([^,]+),(.+)\b(\d+)$/)) {
         match = line.match(/^([^,]+),(.+)\b(\d+)$/);
-        winston.log('info', ' id:', match[1], '\n comments:', match[2], '\n minutes:', match[3]);
+        winston.info(' id:', match[1], '\n notes:', match[2], '\n minutes:', match[3]);
         if (!(match[1] in summary[current])) {
             summary[current][match[1]] = {
-                'comments': '',
+                'notes': '',
                 'minutes': 0
             };
         }
-        summary[current][match[1]].comments += match[2];
+        summary[current][match[1]].notes += match[2];
         summary[current][match[1]].minutes += Number(match[3]);
         summary[current].daytotal += Number(match[3]);
     }
