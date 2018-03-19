@@ -1,19 +1,17 @@
-/** 
+var help = `
 Timesheet to tenrox updating
 
 Parameters for this script:
-TENROX_USER - tenrox username
-TENROX_PASS - password
-TENROX_HOST - host that serves your tenrox instance. double quote if you got fancy chars
-TENROX_ORG - organization / company code for your tenrox instance. generally case sensitive ?
-TIMESHEET_FILE - filename that contains timesheet entries
-LOG_LEVEL - debug,info,warn,error
+ TENROX_USER - tenrox username
+ TENROX_PASS - password
+ TENROX_HOST - host that serves your tenrox instance. single quote if you got fancy chars
+ TENROX_ORG - organization / company code for your tenrox instance. case sensitive
+ TIMESHEET_FILE - filename that contains timesheet entries
+ LOG_LEVEL - debug,info,warn,error
 
 execute this script like:
-$ TIMESHEET_FILE='c:\timesheet_data.txt'
-TENROX_USER=asdf TENROX_PASS="bar" TENROX_HOST=acme.tenrox.net TENROX_ORG=Acme node tenrox.js
-
-*/
+$ TIMESHEET_FILE='c:\\timesheet_data.txt'TENROX_USER=wu TENROX_PASS='tang4eva' TENROX_HOST=acme.tenrox.net TENROX_ORG=Acme node tenrox.js
+`
 
 var q = require('q');
 var request = require('request');
@@ -25,11 +23,14 @@ winston.level = process.env.LOG_LEVEL;
 var tasks = { "ash": "12454", "col": "10520", "intp": "4370", "intm": "4369" }
 
 var session = {},
-    summary = {};
+    summarizedEntries = {};
 
-processFile(process.env.TIMESHEET_FILE)
+checkEnv(['TIMESHEET_FILE', 'TENROX_HOST', 'TENROX_ORG', 'TENROX_USER', 'TENROX_PASS'])
     .then(function (result) {
-        summary = result;
+        return processFile(process.env.TIMESHEET_FILE);
+    })
+    .then(function (result) {
+        summarizedEntries = result;
         return getSession(process.env.TENROX_HOST,
             process.env.TENROX_ORG,
             process.env.TENROX_USER,
@@ -40,16 +41,31 @@ processFile(process.env.TIMESHEET_FILE)
         return getUniqueUserId(session);
     })
     .then(function (uniqueUserId) {
-        return getTimesheetInfo(session, uniqueUserId, new Date());
+        return getTimesheetInfo(session, uniqueUserId, parseDate(Object.keys(summarizedEntries)[0]));
     })
     // .then(assignTaskIds)
     .then(function (timesheetInfo) {
-        return writeEntries(session, summary, timesheetInfo.timesheetId);
+        return postEntries(session, summarizedEntries, timesheetInfo.timesheetId);
     })
     .then(winston.info)
     .catch(function (error) {
         winston.error("Error: " + error);
     });
+
+/**
+ * see if the necessary variables are present
+ * @param {array} inputs environment variable names that are required to run this script
+ */
+function checkEnv(inputs) {
+    defer = q.defer();
+    inputs.forEach(input => {
+        if (!process.env.hasOwnProperty(input)) {
+            defer.reject('Missing environment variable: ' + input + '\n\n' + help);
+        }
+    });
+    defer.resolve();
+    return defer.promise;
+}
 
 /**
  * 
@@ -58,24 +74,34 @@ processFile(process.env.TIMESHEET_FILE)
  * @param {string} timesheetId 
  * @returns {object} promise
  */
-function writeEntries(session, entries, timesheetId) {
-    // defer = q.defer();
-    var promises = [];
-    for (var day in summary) {
-        var entryDate = new Date();
+async function postEntries(session, entries, timesheetId) {
+    // var promises = [];
+    var defer = q.defer();
+    for (var day in entries) {
         winston.debug("Day: " + day);
-        entryDate.setMonth(Number.parseInt(day.substring(0, day.indexOf('/'))) - 1);
-        entryDate.setDate(Number.parseInt(day.substring(day.indexOf('/') + 1)));
-        for (var projectKey in summary[day]) {
+        var entryDate = parseDate(day);
+        for (var projectKey in entries[day]) {
             winston.debug("Projectkey: " + projectKey);
             //TODO: refactor original collection to make sure we're not mixing project keys with this total 
             if (projectKey != 'daytotal') {
-                promises.push(logTimeWithNotes(session, timesheetId, tasks[projectKey], summary[day][projectKey]["notes"], entryDate, summary[day][projectKey]["minutes"]));
+                await postTimeWithNotes(session, timesheetId, tasks[projectKey], entries[day][projectKey]["notes"], entryDate, entries[day][projectKey]["minutes"]);
+                // promises.push(postTimeWithNotes(session, timesheetId, tasks[projectKey], entries[day][projectKey]["notes"], entryDate, entries[day][projectKey]["minutes"]));
             }
         }
     }
-    return q.all(promises);
-    // return defer.promise;
+    defer.resolve("done?");
+    return defer.promise;
+    // return q.all(promises);
+}
+
+/**
+ * @param {string} day shorthand date m/d numeric format, no zero padding expected (eg 1/5 or 2/28 or 12/25)
+ */
+function parseDate(day) {
+    var entryDate = new Date();
+    entryDate.setMonth(Number.parseInt(day.substring(0, day.indexOf('/'))) - 1);
+    entryDate.setDate(Number.parseInt(day.substring(day.indexOf('/') + 1)));
+    return entryDate;
 }
 
 /**
@@ -87,8 +113,8 @@ function writeEntries(session, entries, timesheetId) {
  * @param {Date} entryDate 
  * @param {int} minutes 
  */
-function logTimeWithNotes(session, timesheetId, taskId, notes, entryDate, minutes) {
-    winston.info("Logtimewithnotes: " + { taskId, notes, entryDate, minutes });
+function postTimeWithNotes(session, timesheetId, taskId, notes, entryDate, minutes) {
+    winston.info("postTimeWithNotes: " + { taskId, notes, entryDate, minutes });
     defer = q.defer();
     var putbody = {
         "Notes": [
@@ -157,6 +183,12 @@ function getSession(host, org, user, password) {
             if (error) {
                 defer.reject(error);
             } else {
+                if (body.indexOf("error") !== -1) {
+                    defer.reject("getSession error: " + body);
+                    return;
+                }
+                winston.debug(error);
+                winston.debug(body);
                 defer.resolve({
                     "host": host,
                     "user": user,
@@ -175,6 +207,7 @@ function getSession(host, org, user, password) {
 function getUniqueUserId(session) {
     defer = q.defer();
     winston.info('getting unique user id');
+    winston.debug(session);
     request.get({
         headers: session.headers,
         url: "https://" + session.host + "/TEnterprise/api/v2/Users/?$filter=LoginName eq '" + session.user + "'"
@@ -237,6 +270,7 @@ function processFile(filename) {
     var summary = {};
     var current = '';
     var daytotal = 0;
+
 
     try {
         var lineReader = readline.createInterface({
