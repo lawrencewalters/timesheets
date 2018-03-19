@@ -20,6 +20,7 @@ var readline = require('readline');
 var winston = require('winston');
 winston.level = process.env.LOG_LEVEL;
 
+// TODO: figure out a way to not hardcode these mappings... perhaps in timesheet data?
 var tasks = { "ash": "12454", "col": "10520", "intp": "4370", "intm": "4369" }
 
 var session = {},
@@ -75,7 +76,6 @@ function checkEnv(inputs) {
  * @returns {object} promise
  */
 async function postEntries(session, entries, timesheetId) {
-    // var promises = [];
     var defer = q.defer();
     for (var day in entries) {
         winston.debug("Day: " + day);
@@ -85,13 +85,11 @@ async function postEntries(session, entries, timesheetId) {
             //TODO: refactor original collection to make sure we're not mixing project keys with this total 
             if (projectKey != 'daytotal') {
                 await postTimeWithNotes(session, timesheetId, tasks[projectKey], entries[day][projectKey]["notes"], entryDate, entries[day][projectKey]["minutes"]);
-                // promises.push(postTimeWithNotes(session, timesheetId, tasks[projectKey], entries[day][projectKey]["notes"], entryDate, entries[day][projectKey]["minutes"]));
             }
         }
     }
-    defer.resolve("done?");
+    defer.resolve();
     return defer.promise;
-    // return q.all(promises);
 }
 
 /**
