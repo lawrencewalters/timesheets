@@ -18,10 +18,13 @@ var request = require('request');
 var fs = require('fs');
 var readline = require('readline');
 var winston = require('winston');
-winston.level = process.env.LOG_LEVEL;
 
+winston.level = 'error';
+if (process.env.hasOwnProperty('LOG_LEVEL')) {
+    winston.level = process.env.LOG_LEVEL;
+}
 // TODO: figure out a way to not hardcode these mappings... perhaps in timesheet data?
-var tasks = { "ash": "12454", "col": "10520", "intp": "4370", "intm": "4369" }
+var tasks = { "ash": "12454", "col": "10520", "intp": "4370", "intm": "4369", "sale":"4371", "hol": "22" }
 
 var session = {},
     summarizedEntries = {};
@@ -247,6 +250,7 @@ function getTimesheetInfo(session, uniqueUserId, date) {
                 defer.reject(error);
             } else {
                 var parsed = JSON.parse(body);
+                winston.info(body);
                 defer.resolve({
                     "timesheetId": parsed.UniqueId,
                     "tasks": Object.keys(parsed.AssignmentAttributes).map(key => {
