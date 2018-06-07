@@ -10,7 +10,7 @@ Parameters for this script:
  LOG_LEVEL - debug,info,warn,error
 
 execute this script like:
-$ TIMESHEET_FILE='c:\\timesheet_data.txt'TENROX_USER=wu TENROX_PASS='tang4eva' TENROX_HOST=acme.tenrox.net TENROX_ORG=Acme node tenrox.js
+$ TIMESHEET_FILE='c:\\timesheet_data.txt' TENROX_USER=wu TENROX_PASS='tang4eva' TENROX_HOST=acme.tenrox.net TENROX_ORG=Acme node tenrox.js
 `
 
 var q = require('q');
@@ -24,7 +24,7 @@ if (process.env.hasOwnProperty('LOG_LEVEL')) {
     winston.level = process.env.LOG_LEVEL;
 }
 // TODO: figure out a way to not hardcode these mappings... perhaps in timesheet data?
-var tasks = { "ash": "12454", "col": "10520", "intp": "4370", "intm": "4369", "sale":"4371", "hol": "22" }
+var tasks = { "ash": "12454", "col": "10520", "intp": "4370", "intm": "4369", "sale":"4371", "hol": "22", "trvl":"4373"}
 
 var session = {},
     summarizedEntries = {};
