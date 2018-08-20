@@ -24,7 +24,7 @@ if (process.env.hasOwnProperty('LOG_LEVEL')) {
     winston.level = process.env.LOG_LEVEL;
 }
 // TODO: figure out a way to not hardcode these mappings... perhaps in timesheet data?
-var tasks = { "ash": "12454", "col": "10520", "intp": "4370", "intm": "4369", "sale":"4371", "hol": "22", "trvl":"4373"}
+var tasks = { "bfre":"14427","ash": "14368", "col": "14147", "intp": "4370", "intm": "4369", "sale":"4371", "hol": "22", "trvl":"4373", "phar":"14427", "talb":"12706", "game":"13566","pto":"3601", "turn":"14377"}
 
 var session = {},
     summarizedEntries = {};
@@ -115,7 +115,7 @@ function parseDate(day) {
  * @param {int} minutes 
  */
 function postTimeWithNotes(session, timesheetId, taskId, notes, entryDate, minutes) {
-    winston.info("postTimeWithNotes: " + { taskId, notes, entryDate, minutes });
+    winston.info("postTimeWithNotes", taskId, notes, entryDate, minutes);
     defer = q.defer();
     var putbody = {
         "Notes": [
