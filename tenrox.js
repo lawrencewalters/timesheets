@@ -23,11 +23,10 @@ winston.level = 'error';
 if (process.env.hasOwnProperty('LOG_LEVEL')) {
     winston.level = process.env.LOG_LEVEL;
 }
-// TODO: figure out a way to not hardcode these mappings... perhaps in timesheet data?
-var tasks = { "bfre":"14427","ash": "14368", "col": "14147", "intp": "4370", "intm": "4369", "sale":"4371", "hol": "22", "trvl":"4373", "phar":"14427", "talb":"12706", "game":"13566","pto":"3601", "turn":"14377"}
 
 var session = {},
-    summarizedEntries = {};
+    summarizedEntries = {},
+    tasks = {};
 
 checkEnv(['TIMESHEET_FILE', 'TENROX_HOST', 'TENROX_ORG', 'TENROX_USER', 'TENROX_PASS'])
     .then(function (result) {
@@ -273,7 +272,6 @@ function processFile(filename) {
     var current = '';
     var daytotal = 0;
 
-
     try {
         var lineReader = readline.createInterface({
             input: fs.createReadStream(filename)
@@ -297,13 +295,22 @@ function processFile(filename) {
 
 /**
  * read a single line of timesheet data
- * @param {string} line single line of timesheet data file, represents project key, notes, minutes OR a date
+ * @param {string} line single line of timesheet data file, represents project key, notes, minutes OR a date OR a tasks list
  * @param {object} summary keyed map of date => { daytotal, project key => {notes, minutes}}
  */
 function parse(line, summary) {
     winston.info(line);
     if (line[0] == '#')
         return;
+    if (line.match(/^tasks=(.+)$/)) {
+        match = line.match(/^tasks=(.+)$/);
+        winston.debug(match[1]); 
+        match[1].split(",").map(function(val) {
+            tasks[val.split(":")[0].replace(/\"/g,"").trim()] = val.split(":")[1].replace(/\"/g,"").trim();
+        });
+        winston.info("task mapping", tasks);
+        return;
+    }
     if (line.match(/^\d+\/\d+$/)) {
         current = line;
         summary[current] = {

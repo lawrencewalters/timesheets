@@ -1,17 +1,29 @@
 # timesheet
-# line with just a day/month starts a new day/month
+#
+# task mapping at the top like this, with the abbreviation you want to use in this file on each line
+# along with the TaskUID from Tenrox (literally search tenrox timesheet iframe source for "TaskUID" and you'll find them)
+#
+# Example:
+# tasks="foo":"12354","bar":"6789"
+# 
+# timesheet entries look like:
+# line with just a month/day (12/31 or 1/30 or 1/8) starts a new month/day
 # line with tenrox nickname comma description with any text (including commas) comma minutes
-# Ex:
+#
+# Example:
+# 12/31
 # int,all hands meeting,45
 # client1,standup, grooming, whatever,120
+#
 
-1/2
+tasks="foo":"12345","bar":"99999","baz":"49494"
+12/30
 bar,reviewing progress on PDP / PLP, getting Julie up to speed on cart, reviewing cart XYZ-770 status, assembling BMCR data for release,120
 baz, ocapi/recs questions,45
 bar, dev standup, reviewing status with AM team,60
 baz, ocapi/freefinder tsd, 270
 bar, internal dev checkin, 30
-1/3
+12/31
 bar, reviewing and responding to tickets for PDP / PLP, 60
 foo, microsoft D365 call, updating TSD removing descoped items, adding order status,90
 bar, daily checkin, reviewing XYZ-532 issues with Nancy,60
