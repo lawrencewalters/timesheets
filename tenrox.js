@@ -249,7 +249,7 @@ function getTimesheetInfo(session, uniqueUserId, date) {
                 defer.reject(error);
             } else {
                 var parsed = JSON.parse(body);
-                winston.info(body);
+                showAssignmentDetails(parsed.AssignmentAttributes);
                 defer.resolve({
                     "timesheetId": parsed.UniqueId,
                     "tasks": Object.keys(parsed.AssignmentAttributes).map(key => {
@@ -264,6 +264,15 @@ function getTimesheetInfo(session, uniqueUserId, date) {
         }
     );
     return defer.promise;
+}
+
+function showAssignmentDetails(assignments) {
+    winston.info("Current Assignments:");
+    Object.keys(assignments).forEach(key => {
+        winston.info(assignments[key].TaskUid, 
+            assignments[key].AssignmentName, 
+            assignments[key].ProjectName);
+    })
 }
 
 function processFile(filename) {
