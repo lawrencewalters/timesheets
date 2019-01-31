@@ -4,8 +4,15 @@ var fs = require('fs');
 var winston = require('winston');
 var colors = require('colors');
 
+const logger = winston.createLogger({
+    level: process.env.LOG_LEVEL,
+    format: winston.format.json(),
+    transports: [
+        new winston.transports.Console({format: winston.format.simple()})
+    ]
+  });
+
 var colorMap = new Map();
-winston.level = process.env.LOG_LEVEL;
 
 var datafile = 'data.txt';
 process.argv.forEach(function (val, index, array) {
@@ -116,7 +123,7 @@ function toHours(minutes) {
 }
 
 function parse(line, summary) {
-    winston.log('info', line);
+    logger.log('info', line);
     if (line[0] == '#')
         return;
     if (line.match(/^\d+\/\d+$/)) {
@@ -126,7 +133,7 @@ function parse(line, summary) {
         };
     } else if (line.match(/^([^,]+),(.+)\b(\d+)$/)) {
         match = line.match(/^([^,]+),(.+)\b(\d+)$/);
-        winston.log('info', ' id:', match[1], '\n comments:', match[2], '\n minutes:', match[3]);
+        logger.log('info', ' id:', match[1], '\n comments:', match[2], '\n minutes:', match[3]);
         if (!(match[1] in summary[current])) {
             summary[current][match[1]] = {
                 'comments': '',

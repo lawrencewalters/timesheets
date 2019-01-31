@@ -24,6 +24,14 @@ if (process.env.hasOwnProperty('LOG_LEVEL')) {
     winston.level = process.env.LOG_LEVEL;
 }
 
+const logger = winston.createLogger({
+    level: winston.level,
+    format: winston.format.json(),
+    transports: [
+        new winston.transports.Console({format: winston.format.simple()})
+    ]
+  });
+
 var session = {},
     summarizedEntries = {},
     tasks = {};
@@ -50,9 +58,9 @@ checkEnv(['TIMESHEET_FILE', 'TENROX_HOST', 'TENROX_ORG', 'TENROX_USER', 'TENROX_
     .then(function (timesheetInfo) {
         return postEntries(session, summarizedEntries, timesheetInfo.timesheetId);
     })
-    .then(winston.info)
+    .then(logger.info)
     .catch(function (error) {
-        winston.error("Error: " + error);
+        logger.error("Error: " + error);
     });
 
 /**
@@ -80,10 +88,10 @@ function checkEnv(inputs) {
 async function postEntries(session, entries, timesheetId) {
     var defer = q.defer();
     for (var day in entries) {
-        winston.debug("Day: " + day);
+        logger.debug("Day: " + day);
         var entryDate = parseDate(day);
         for (var projectKey in entries[day]) {
-            winston.debug("Projectkey: " + projectKey);
+            logger.debug("Projectkey: " + projectKey);
             //TODO: refactor original collection to make sure we're not mixing project keys with this total 
             if (projectKey != 'daytotal') {
                 await postTimeWithNotes(session, timesheetId, tasks[projectKey], entries[day][projectKey]["notes"], entryDate, entries[day][projectKey]["minutes"]);
@@ -114,7 +122,7 @@ function parseDate(day) {
  * @param {int} minutes 
  */
 function postTimeWithNotes(session, timesheetId, taskId, notes, entryDate, minutes) {
-    winston.info("postTimeWithNotes", taskId, notes, entryDate, minutes);
+    logger.info("postTimeWithNotes", taskId, notes, entryDate, minutes);
     defer = q.defer();
     var putbody = {
         "Notes": [
@@ -144,7 +152,7 @@ function postTimeWithNotes(session, timesheetId, taskId, notes, entryDate, minut
         ]
     };
     session.headers["Content-Type"] = 'application/x-www-form-urlencoded';
-    winston.debug(JSON.stringify(putbody));
+    logger.debug(JSON.stringify(putbody));
     request.put({
         headers: session.headers,
         url: "https://" + session.host + "/TEnterprise/api/Timesheets/" + timesheetId + "?property=TIMEENTRYLITE",
@@ -154,8 +162,8 @@ function postTimeWithNotes(session, timesheetId, taskId, notes, entryDate, minut
             if (error) {
                 defer.reject(error);
             } else {
-                winston.debug('timesheets statusCode:', response && response.statusCode);
-                winston.debug('timesheets body:', body);
+                logger.debug('timesheets statusCode:', response && response.statusCode);
+                logger.debug('timesheets body:', body);
                 defer.resolve('timesheets statusCode:' + response + ' ' + response.statusCode);
             }
         });
@@ -173,7 +181,7 @@ function postTimeWithNotes(session, timesheetId, taskId, notes, entryDate, minut
  */
 function getSession(host, org, user, password) {
     defer = q.defer()
-    winston.info('getting new session token');
+    logger.info('getting new session token');
     request.post({
         url: 'https://' + host + '/TEnterprise/api/token',
         headers: { OrgName: org },
@@ -187,8 +195,8 @@ function getSession(host, org, user, password) {
                     defer.reject("getSession error: " + body);
                     return;
                 }
-                winston.debug(error);
-                winston.debug(body);
+                logger.debug(error);
+                logger.debug(body);
                 defer.resolve({
                     "host": host,
                     "user": user,
@@ -206,8 +214,8 @@ function getSession(host, org, user, password) {
 
 function getUniqueUserId(session) {
     defer = q.defer();
-    winston.info('getting unique user id');
-    winston.debug(session);
+    logger.info('getting unique user id');
+    logger.debug(session);
     request.get({
         headers: session.headers,
         url: "https://" + session.host + "/TEnterprise/api/v2/Users/?$filter=LoginName eq '" + session.user + "'"
@@ -236,7 +244,7 @@ function getUniqueUserId(session) {
  */
 function getTimesheetInfo(session, uniqueUserId, date) {
     defer = q.defer();
-    winston.info("getting timesheet info");
+    logger.info("getting timesheet info");
     request.get({
         headers: session.headers,
         url: "https://" + session.host + "/TEnterprise/api/Timesheets/?UserId=" + uniqueUserId +
@@ -267,9 +275,9 @@ function getTimesheetInfo(session, uniqueUserId, date) {
 }
 
 function showAssignmentDetails(assignments) {
-    winston.info("Current Assignments:");
+    logger.info("Current Assignments:");
     Object.keys(assignments).forEach(key => {
-        winston.info(assignments[key].TaskUid, 
+        logger.info(assignments[key].TaskUid, 
             assignments[key].AssignmentName, 
             assignments[key].ProjectName);
     })
@@ -308,16 +316,16 @@ function processFile(filename) {
  * @param {object} summary keyed map of date => { daytotal, project key => {notes, minutes}}
  */
 function parse(line, summary) {
-    winston.info(line);
+    logger.info(line);
     if (line[0] == '#')
         return;
     if (line.match(/^tasks=(.+)$/)) {
         match = line.match(/^tasks=(.+)$/);
-        winston.debug(match[1]); 
+        logger.debug(match[1]); 
         match[1].split(",").map(function(val) {
             tasks[val.split(":")[0].replace(/\"/g,"").trim()] = val.split(":")[1].replace(/\"/g,"").trim();
         });
-        winston.info("task mapping", tasks);
+        logger.info("task mapping", tasks);
         return;
     }
     if (line.match(/^\d+\/\d+$/)) {
@@ -327,7 +335,7 @@ function parse(line, summary) {
         };
     } else if (line.match(/^([^,]+),(.+)\b(\d+)$/)) {
         match = line.match(/^([^,]+),(.+)\b(\d+)$/);
-        winston.info(' id:', match[1], '\n notes:', match[2], '\n minutes:', match[3]);
+        logger.info(' id:', match[1], '\n notes:', match[2], '\n minutes:', match[3]);
         if (!(match[1] in summary[current])) {
             summary[current][match[1]] = {
                 'notes': '',
