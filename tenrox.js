@@ -26,9 +26,9 @@ if (process.env.hasOwnProperty('LOG_LEVEL')) {
 
 const logger = winston.createLogger({
     level: winston.level,
-    format: winston.format.json(),
+    format: winston.format.combine(winston.format.splat(),winston.format.simple()),
     transports: [
-        new winston.transports.Console({format: winston.format.simple()})
+        new winston.transports.Console()
     ]
   });
 
@@ -98,7 +98,7 @@ async function postEntries(session, entries, timesheetId) {
             }
         }
     }
-    defer.resolve();
+    defer.resolve('postEntries completed successfully');
     return defer.promise;
 }
 
@@ -122,7 +122,7 @@ function parseDate(day) {
  * @param {int} minutes 
  */
 function postTimeWithNotes(session, timesheetId, taskId, notes, entryDate, minutes) {
-    logger.info("postTimeWithNotes", taskId, notes, entryDate, minutes);
+    logger.info("postTimeWithNotes %s %s %s %s", taskId, notes, entryDate, minutes);
     defer = q.defer();
     var putbody = {
         "Notes": [
@@ -162,9 +162,9 @@ function postTimeWithNotes(session, timesheetId, taskId, notes, entryDate, minut
             if (error) {
                 defer.reject(error);
             } else {
-                logger.debug('timesheets statusCode:', response && response.statusCode);
-                logger.debug('timesheets body:', body);
-                defer.resolve('timesheets statusCode:' + response + ' ' + response.statusCode);
+                logger.debug('timesheets statusCode: %s %s', response.statusMessage, response.statusCode);
+                logger.debug('timesheets body: %s', body);
+                defer.resolve('timesheets statusCode: ' + response.statusMessage + ' ' + response.statusCode);
             }
         });
     return defer.promise;
@@ -277,7 +277,7 @@ function getTimesheetInfo(session, uniqueUserId, date) {
 function showAssignmentDetails(assignments) {
     logger.info("Current Assignments:");
     Object.keys(assignments).forEach(key => {
-        logger.info(assignments[key].TaskUid, 
+        logger.info("%s %s %s", assignments[key].TaskUid, 
             assignments[key].AssignmentName, 
             assignments[key].ProjectName);
     })
@@ -325,7 +325,7 @@ function parse(line, summary) {
         match[1].split(",").map(function(val) {
             tasks[val.split(":")[0].replace(/\"/g,"").trim()] = val.split(":")[1].replace(/\"/g,"").trim();
         });
-        logger.info("task mapping", tasks);
+        logger.info("task mapping %s", tasks);
         return;
     }
     if (line.match(/^\d+\/\d+$/)) {
@@ -335,7 +335,7 @@ function parse(line, summary) {
         };
     } else if (line.match(/^([^,]+),(.+)\b(\d+)$/)) {
         match = line.match(/^([^,]+),(.+)\b(\d+)$/);
-        logger.info(' id:', match[1], '\n notes:', match[2], '\n minutes:', match[3]);
+        logger.info(' id: %s\n notes: %s\n minutes: %s', match[1], match[2], match[3]);
         if (!(match[1] in summary[current])) {
             summary[current][match[1]] = {
                 'notes': '',
