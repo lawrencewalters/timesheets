@@ -1,17 +1,13 @@
-Timesheets
-==============
+# Timesheets
 
 This is a basic nodejs app to make entering weekly timesheets into Tenrox easier, because the tenrox UI is terrible. 
 
-Installation
-----------------
+## Installation
+
 Currently requires nodejs 9+
 clone this repo, then `npm install` and you should be good.
 
-Running
-----------------
-
-**Time tracking and summary**
+## Running - Local Time Tracking And Summary
 
 Record your notes in a simple format by day, with task, notes, and minutes spent (see data_sample.txt for full example):
 
@@ -43,19 +39,32 @@ to get output similar to:
  foo:        2:00
  ```
 
-**Saving to Tenrox**
+## Running - Uploading to Tenrox
+
+### WARNING: when saving time to tenrox, this will first delete all entries in the current timesheet
+
+This enables your local timesheet notes to be the system of record, but it may not play nicely with pre approved vacation, or if you manually go to Tenrox for some things but not others.
+
+### Tenrox API Version
+
+This uses a mix of the Tenrox V1 and V2 api (eg, /Timesheets and /v2/users resources), which you can view at https://help.uplandsoftware.com/tenrox/en/adminguide/development/restapi/How-do-I-access-the-REST-API-Online-Help.htm
+
+### Setup
 
 First, map the names you're using in your notes (eg **bar** or **baz**) to the actual task id's that Tenrox expects. Currently this is hardcoded in the top of `tenrox.js`:
 
 ```
 var tasks = { "ash": "12454", "col": "10520", "intp": "4370", "intm": "4369", "sale":"4371", "hol": "22", "trvl":"4373"}
 ```
-The best way to figure this out is to fill out your timesheet regularly in Tenrox, then make a single dummy entry in your local data file, run `tenrox.js` as specified below. This will save your current timesheet in **outputs/tenrox_timesheet_data.json**. Take a gander and find the **TaskUid** that's right for your task.
+
+The best way to figure this out is to fill out your timesheet regularly in Tenrox, then make a single dummy entry in your local data file, run `tenrox.js` as specified below with `LOG_LEVEL=info`. This will display your current timesheet entries and assignments in stdout. Take a gander and find the **TaskUid** that's right for your task.
+
+### Execute
 
 After your entries are recorded for the week, execute `tenrox.js`:
 
 ```
-TIMESHEET_FILE='c:\\timesheet_data.txt' TENROX_USER=wu TENROX_PASS='tang4eva' TENROX_HOST=acme.tenrox.net TENROX_ORG=Acme node tenrox.js
+TIMESHEET_FILE='c:\\timesheet_data.txt' TENROX_USER=wu TENROX_PASS='tang4eva' TENROX_HOST=acme.tenrox.net TENROX_ORG=Acme LOG_LEVEL=info node tenrox.js
 ```
 
 Note everything is environment variables, and explained in the `tenrox.js` file.

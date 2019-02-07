@@ -8,9 +8,9 @@ const logger = winston.createLogger({
     level: process.env.LOG_LEVEL,
     format: winston.format.json(),
     transports: [
-        new winston.transports.Console({format: winston.format.simple()})
+        new winston.transports.Console({ format: winston.format.simple() })
     ]
-  });
+});
 
 var colorMap = new Map();
 

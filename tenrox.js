@@ -26,11 +26,11 @@ if (process.env.hasOwnProperty('LOG_LEVEL')) {
 
 const logger = winston.createLogger({
     level: winston.level,
-    format: winston.format.combine(winston.format.splat(),winston.format.simple()),
+    format: winston.format.combine(winston.format.splat(), winston.format.simple()),
     transports: [
         new winston.transports.Console()
     ]
-  });
+});
 
 var session = {},
     summarizedEntries = {},
@@ -54,7 +54,9 @@ checkEnv(['TIMESHEET_FILE', 'TENROX_HOST', 'TENROX_ORG', 'TENROX_USER', 'TENROX_
     .then(function (uniqueUserId) {
         return getTimesheetInfo(session, uniqueUserId, parseDate(Object.keys(summarizedEntries)[0]));
     })
-    // .then(assignTaskIds)
+    .then(function (timesheetInfo) {
+        return deleteCurrentEntries(session, timesheetInfo);
+    })
     .then(function (timesheetInfo) {
         return postEntries(session, summarizedEntries, timesheetInfo.timesheetId);
     })
@@ -75,6 +77,50 @@ function checkEnv(inputs) {
         }
     });
     defer.resolve();
+    return defer.promise;
+}
+
+/**
+ * Delete all the current entries of a given timesheet
+ * @param {*} session 
+ * @param {*} timesheetInfo full response from getTimeSheetInfo() {timesheetId, tasks, timesheet}
+ * @returns {object} promise with original input param timesheetInfo (matching original getTimeSheetInfo)
+ */
+async function deleteCurrentEntries(session, timesheetInfo) {
+    var defer = q.defer();
+    for (var i = 0; i < timesheetInfo.timesheet.TimeEntries.length; i++) {
+        var entry = timesheetInfo.timesheet.TimeEntries[i];
+        logger.info("Deleting previous entry: %s / %s / %s", entry.UniqueId, entry.TaskName, entry.Notes[0].Description);
+        logger.debug("Deleting entry entry: " + JSON.stringify(entry, null, 4));
+        await deleteEntry(session, entry.UniqueId);
+    }
+    defer.resolve(timesheetInfo);
+    return defer.promise;
+}
+
+/**
+ * Uses the DELETE api/v2/TimeEntries/{id} API to delete an entry given it's id
+ * @param {*} session 
+ * @param {*} entryId 
+ * @returns {object} promise with text description of api result
+ */
+function deleteEntry(session, entryId) {
+    logger.info("delete Entry %s", entryId);
+    defer = q.defer();
+    session.headers["Content-Type"] = 'application/x-www-form-urlencoded';
+    request.delete({
+        headers: session.headers,
+        url: "https://" + session.host + "/TEnterprise/api/v2/TimeEntries/" + entryId
+    },
+        function (error, response, body) {
+            if (error) {
+                defer.reject(error);
+            } else {
+                logger.debug('TimeEntries statusCode: %s %s', response.statusMessage, response.statusCode);
+                logger.debug('TimeEntries body: %s', body);
+                defer.resolve('TimeEntries statusCode: ' + response.statusMessage + ' ' + response.statusCode);
+            }
+        });
     return defer.promise;
 }
 
@@ -195,8 +241,8 @@ function getSession(host, org, user, password) {
                     defer.reject("getSession error: " + body);
                     return;
                 }
-                logger.debug(error);
-                logger.debug(body);
+                logger.debug("  error: %s", error);
+                logger.debug("  body: %s", body);
                 defer.resolve({
                     "host": host,
                     "user": user,
@@ -215,7 +261,7 @@ function getSession(host, org, user, password) {
 function getUniqueUserId(session) {
     defer = q.defer();
     logger.info('getting unique user id');
-    logger.debug(session);
+    logger.debug(" session: %s", JSON.stringify(session, null, 4));
     request.get({
         headers: session.headers,
         url: "https://" + session.host + "/TEnterprise/api/v2/Users/?$filter=LoginName eq '" + session.user + "'"
@@ -240,7 +286,7 @@ function getUniqueUserId(session) {
  * @param {object} session 
  * @param {string} uniqueUserId 
  * @param {Date} date day in timesheet week
- * @returns {object} promise with results{timesheetId, tasks}
+ * @returns {object} promise with results{timesheetId (just the id), tasks (just the tasks), timesheet (full API object)}
  */
 function getTimesheetInfo(session, uniqueUserId, date) {
     defer = q.defer();
@@ -257,6 +303,7 @@ function getTimesheetInfo(session, uniqueUserId, date) {
                 defer.reject(error);
             } else {
                 var parsed = JSON.parse(body);
+                logger.debug(JSON.stringify(parsed, null, 4));
                 showAssignmentDetails(parsed.AssignmentAttributes);
                 defer.resolve({
                     "timesheetId": parsed.UniqueId,
@@ -266,7 +313,8 @@ function getTimesheetInfo(session, uniqueUserId, date) {
                             AssignmentName: parsed.AssignmentAttributes[key].AssignmentName,
                             ProjectName: parsed.AssignmentAttributes[key].ProjectName
                         }
-                    })
+                    }),
+                    "timesheet": parsed
                 });
             }
         }
@@ -277,8 +325,8 @@ function getTimesheetInfo(session, uniqueUserId, date) {
 function showAssignmentDetails(assignments) {
     logger.info("Current Assignments:");
     Object.keys(assignments).forEach(key => {
-        logger.info("%s %s %s", assignments[key].TaskUid, 
-            assignments[key].AssignmentName, 
+        logger.info("%s %s %s", assignments[key].TaskUid,
+            assignments[key].AssignmentName,
             assignments[key].ProjectName);
     })
 }
@@ -321,11 +369,11 @@ function parse(line, summary) {
         return;
     if (line.match(/^tasks=(.+)$/)) {
         match = line.match(/^tasks=(.+)$/);
-        logger.debug(match[1]); 
-        match[1].split(",").map(function(val) {
-            tasks[val.split(":")[0].replace(/\"/g,"").trim()] = val.split(":")[1].replace(/\"/g,"").trim();
+        logger.debug(match[1]);
+        match[1].split(",").map(function (val) {
+            tasks[val.split(":")[0].replace(/\"/g, "").trim()] = val.split(":")[1].replace(/\"/g, "").trim();
         });
-        logger.info("task mapping %s", tasks);
+        logger.info("task mapping %s", JSON.stringify(tasks, null, 4));
         return;
     }
     if (line.match(/^\d+\/\d+$/)) {
