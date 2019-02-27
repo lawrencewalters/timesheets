@@ -90,7 +90,7 @@ async function deleteCurrentEntries(session, timesheetInfo) {
     var defer = q.defer();
     for (var i = 0; i < timesheetInfo.timesheet.TimeEntries.length; i++) {
         var entry = timesheetInfo.timesheet.TimeEntries[i];
-        logger.info("Deleting previous entry: %s / %s / %s", entry.UniqueId, entry.TaskName, entry.Notes[0].Description);
+        logger.info("Deleting previous entry: %s / %s / %s", entry.UniqueId, entry.TaskName, (typeof entry.Notes !== 'undefined' && entry.Notes !== null) ? entry.Notes[0].Description : '');
         logger.debug("Deleting entry entry: " + JSON.stringify(entry, null, 4));
         await deleteEntry(session, entry.UniqueId);
     }
