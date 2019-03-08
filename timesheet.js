@@ -1,16 +1,38 @@
-// run with node timesheet.js [datafile]
-// datafile is optional parameter to specify what file to parse. defaults to current directory 'data.txt'
+var help = `
+Timesheet summary view
+see https://github.com/lawrencewalters/timesheets/ for full docs
+
+Command line parameters:
+ datafile   optional full path to file with your entries. defaults to data.txt in current directory
+
+Environment variables this script respects:
+ LOG_LEVEL - debug,info,warn,error
+
+default execution
+    $ node timesheet.js
+
+specify a timesheet
+    $ node timesheet.js /path/to/my/my-timesheet.txt
+
+custom logging, with custom data file
+    $ LOG_LEVEL=warn node timesheet.js my-timesheet.txt
+`
 var fs = require('fs');
 var winston = require('winston');
 var colors = require('colors');
 
 const logger = winston.createLogger({
-    level: process.env.LOG_LEVEL,
     format: winston.format.json(),
     transports: [
         new winston.transports.Console({ format: winston.format.simple() })
     ]
 });
+
+if (process.env.hasOwnProperty('LOG_LEVEL')) {
+    logger.level = process.env.LOG_LEVEL;
+} else {
+    logger.level = 'error';
+}
 
 var colorMap = new Map();
 
