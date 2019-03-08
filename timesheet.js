@@ -3,7 +3,8 @@ Timesheet summary view
 see https://github.com/lawrencewalters/timesheets/ for full docs
 
 Command line parameters:
- datafile   optional full path to file with your entries. defaults to data.txt in current directory
+ datafile       optional full path to file with your entries. defaults to data.txt in current directory
+ -h, --help     show this help menu
 
 Environment variables this script respects:
  LOG_LEVEL - debug,info,warn,error
@@ -17,6 +18,7 @@ specify a timesheet
 custom logging, with custom data file
     $ LOG_LEVEL=warn node timesheet.js my-timesheet.txt
 `
+
 var fs = require('fs');
 var winston = require('winston');
 var colors = require('colors');
@@ -39,6 +41,10 @@ var colorMap = new Map();
 var datafile = 'data.txt';
 process.argv.forEach(function (val, index, array) {
     if (index > 1) {
+        if(val === '-h' || val === '--help') {
+            console.log(help);
+            process.exit();
+        }
         datafile = val;
     }
 });
