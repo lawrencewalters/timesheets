@@ -381,17 +381,25 @@ function parse(line, summary) {
         summary[current] = {
             daytotal: 0
         };
-    } else if (line.match(/^([^,]+),(.+)\b(\d+)$/)) {
-        match = line.match(/^([^,]+),(.+)\b(\d+)$/);
+    } else if (line.match(/^([^,]+),(.+),\b(\d+)$/)) {
+        match = line.match(/^([^,]+),(.+),\b(\d+)$/);
         logger.info(' id: %s\n notes: %s\n minutes: %s', match[1], match[2], match[3]);
-        if (!(match[1] in summary[current])) {
-            summary[current][match[1]] = {
-                'notes': '',
-                'minutes': 0
+        
+        parsedId = match[1];
+        parsedComment = match[2];
+        parsedMinutes = Number(match[3]);
+
+        // logger.log('info', ' id:', parsedId, '\n comments:', parsedComment, '\n minutes:', parsedMinutes);
+        if (!(parsedId in summary[current])) {
+            summary[current][parsedId] = {
+                'notes': parsedComment + ' (' + parsedMinutes.toString() + ')',
+                'minutes': parsedMinutes
             };
         }
-        summary[current][match[1]].notes += match[2];
-        summary[current][match[1]].minutes += Number(match[3]);
-        summary[current].daytotal += Number(match[3]);
+        else {
+            summary[current][parsedId].notes += '\n' + parsedComment + ' (' + parsedMinutes.toString() + ')';
+            summary[current][parsedId].minutes += parsedMinutes;
+        }
+        summary[current].daytotal += parsedMinutes;
     }
 }
