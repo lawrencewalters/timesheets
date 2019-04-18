@@ -151,6 +151,8 @@ function toHours(minutes) {
 }
 
 function parse(line, summary) {
+    var parsedId, parsedComment, parsedMinutes;
+
     logger.log('info', line);
     if (line[0] == '#')
         return;
@@ -159,18 +161,23 @@ function parse(line, summary) {
         summary[current] = {
             'daytotal': 0
         };
-    } else if (line.match(/^([^,]+),(.+)\b(\d+)$/)) {
-        match = line.match(/^([^,]+),(.+)\b(\d+)$/);
-        logger.log('info', ' id:', match[1], '\n comments:', match[2], '\n minutes:', match[3]);
-        if (!(match[1] in summary[current])) {
-            summary[current][match[1]] = {
-                'comments': '',
-                'minutes': 0
+    } else if (line.match(/^([^,]+),(.+),\b(\d+)$/)) {
+        match = line.match(/^([^,]+),(.+),\b(\d+)$/);
+        parsedId = match[1];
+        parsedComment = match[2];
+        parsedMinutes = Number(match[3]);
+
+        logger.log('info', ' id:', parsedId, '\n comments:', parsedComment, '\n minutes:', parsedMinutes);
+        if (!(parsedId in summary[current])) {
+            summary[current][parsedId] = {
+                'comments': parsedComment + ' (' + parsedMinutes.toString() + ')',
+                'minutes': parsedMinutes
             };
         }
-
-        summary[current][match[1]].comments += match[2];
-        summary[current][match[1]].minutes += Number(match[3]);
-        summary[current].daytotal += Number(match[3]);
+        else {
+            summary[current][parsedId].comments += parsedComment + ' (' + parsedMinutes.toString() + ')';
+            summary[current][parsedId].minutes += parsedMinutes;
+        }
+        summary[current].daytotal += parsedMinutes;
     }
 }
