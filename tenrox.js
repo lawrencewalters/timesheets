@@ -299,9 +299,11 @@ function getTimesheetInfo(session, uniqueUserId, date) {
             + date.getFullYear()
     },
         function (error, response, body) {
+            logger.debug("Request path: " + this.uri.href);
             if (error) {
                 defer.reject(error);
             } else {
+                logger.debug(JSON.stringify(response, null, 4));
                 var parsed = JSON.parse(body);
                 logger.debug(JSON.stringify(parsed, null, 4));
                 showAssignmentDetails(parsed.AssignmentAttributes);
