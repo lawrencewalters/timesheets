@@ -165,6 +165,7 @@ async function postEntries(session, entries, timesheetId, timesheetStartDate, ti
                 logger.debug(entryDate);
                 var d1 = new Date(entryDate);
                 var dEnd = new Date(timesheetEndDate);
+                dEnd.setTime(dEnd.getTime() + 1 * 24 * 60 * 60 * 1000); // make the end time be the end of the day, not the beginning
                 var dStart = new Date(timesheetStartDate);
                 if (d1.getTime() > dEnd.getTime() ||
                     d1.getTime() < dStart.getTime()) {
