@@ -415,8 +415,8 @@ function parse(line, summary) {
         summary[current] = {
             daytotal: 0
         };
-    } else if (line.match(/^([^,]+),(.+),\b(\d+)$/)) {
-        match = line.match(/^([^,]+),(.+),\b(\d+)$/);
+    } else if (line.match(/^([^,]+),(.+),\s?\b(\d+)$/)) {
+        match = line.match(/^([^,]+),(.+),\s?\b(\d+)$/);
         logger.info(' id: %s\n notes: %s\n minutes: %s', match[1], match[2], match[3]);
 
         parsedId = match[1];

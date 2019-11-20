@@ -39,9 +39,9 @@ if (process.env.hasOwnProperty('LOG_LEVEL')) {
 var colorMap = new Map();
 
 var datafile = 'data.txt';
-process.argv.forEach(function (val, index, array) {
+process.argv.forEach(function(val, index, array) {
     if (index > 1) {
-        if(val === '-h' || val === '--help') {
+        if (val === '-h' || val === '--help') {
             console.log(help);
             process.exit();
         }
@@ -50,7 +50,7 @@ process.argv.forEach(function (val, index, array) {
 });
 
 processFile(datafile);
-fs.watchFile(datafile, function (curr, prev) {
+fs.watchFile(datafile, function(curr, prev) {
     processFile(datafile);
 });
 
@@ -62,8 +62,8 @@ function processFile(filename) {
         input: require('fs').createReadStream(filename)
     });
 
-    lineReader.on('line', function (input) { parse(input, summary) });
-    lineReader.on('close', function () {
+    lineReader.on('line', function(input) { parse(input, summary) });
+    lineReader.on('close', function() {
         totals = {};
         for (var day in summary) {
             if (summary.hasOwnProperty(day)) {
@@ -104,7 +104,7 @@ function displayGrid(summary, totals) {
     }
     for (var projectKey in projectHoursByDay) {
         console.log(colorByKey(projectKey, ('     ' + projectKey + ': ').slice(-6) +
-            Object.keys(summary).map(function (day) {
+            Object.keys(summary).map(function(day) {
                 if (projectHoursByDay[projectKey][day]) {
                     return toHours(projectHoursByDay[projectKey][day]);
                 } else {
@@ -161,8 +161,8 @@ function parse(line, summary) {
         summary[current] = {
             'daytotal': 0
         };
-    } else if (line.match(/^([^,]+),(.+),\b(\d+)$/)) {
-        match = line.match(/^([^,]+),(.+),\b(\d+)$/);
+    } else if (line.match(/^([^,]+),(.+),\s?\b(\d+)$/)) {
+        match = line.match(/^([^,]+),(.+),\s?\b(\d+)$/);
         parsedId = match[1];
         parsedComment = match[2];
         parsedMinutes = Number(match[3]);
@@ -173,8 +173,7 @@ function parse(line, summary) {
                 'comments': parsedComment + ' (' + parsedMinutes.toString() + ')',
                 'minutes': parsedMinutes
             };
-        }
-        else {
+        } else {
             summary[current][parsedId].comments += parsedComment + ' (' + parsedMinutes.toString() + ')';
             summary[current][parsedId].minutes += parsedMinutes;
         }
