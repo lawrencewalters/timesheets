@@ -51,10 +51,10 @@ This uses a mix of the Tenrox V1 and V2 api (eg, /Timesheets and /v2/users resou
 
 ### Setup
 
-First, map the names you're using in your notes (eg **bar** or **baz**) to the actual task id's that Tenrox expects. Currently this is hardcoded in the top of `tenrox.js`:
+First, map the names you're using in your notes (eg **bar** or **baz**) to the actual task id's that Tenrox expects. Do this at the top of your timesheet data file (```timesheet_data.txt``` or whatever). Note, this is not strict JSON, it's just a random thing that's comma delimited.
 
 ```
-var tasks = { "ash": "12454", "col": "10520", "intp": "4370", "intm": "4369", "sale":"4371", "hol": "22", "trvl":"4373"}
+tasks="sick":"5","vaca":"3","hol": "22","float":"6", "bfre":"14427","bf2":"17513","ash": "16772", "intp": "4370", "intm": "4369", "sale":"4371", "trvl":"4373", "fost":"15105", "fos":"15103", "fcodev":"16595","bsl":"16671","hh":"18077"
 ```
 
 The best way to figure this out is to fill out your timesheet regularly in Tenrox, then make a single dummy entry in your local data file, run `tenrox.js` as specified below with `LOG_LEVEL=info`. This will display your current timesheet entries and assignments in stdout. Take a gander and find the **TaskUid** that's right for your task.
