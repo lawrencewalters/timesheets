@@ -156,7 +156,7 @@ function parse(line, summary) {
     logger.log('info', line);
     if (line[0] == '#')
         return;
-    if (line.match(/^\d+\/\d+$/)) {
+    if (line.lastIndexOf('/')>0) {
         current = line;
         summary[current] = {
             'daytotal': 0

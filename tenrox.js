@@ -20,6 +20,7 @@ var readline = require('readline');
 var winston = require('winston');
 
 winston.level = 'error';
+winston.config.Console
 if (process.env.hasOwnProperty('LOG_LEVEL')) {
     winston.level = process.env.LOG_LEVEL;
 }
@@ -155,6 +156,9 @@ function parseDate(day) {
     var entryDate = new Date();
     entryDate.setMonth(Number.parseInt(day.substring(0, day.indexOf('/'))) - 1);
     entryDate.setDate(Number.parseInt(day.substring(day.indexOf('/') + 1)));
+    if (day.lastIndexOf('/')>2) {
+        entryDate.setFullYear(Number.parseInt(day.substring(day.lastIndexOf('/')+1)));
+    }
     return entryDate;
 }
 
@@ -207,9 +211,15 @@ function postTimeWithNotes(session, timesheetId, taskId, notes, entryDate, minut
         function (error, response, body) {
             if (error) {
                 defer.reject(error);
+                logger.error("error: "+error);
             } else {
-                logger.debug('timesheets statusCode: %s %s', response.statusMessage, response.statusCode);
-                logger.debug('timesheets body: %s', body);
+                logger.info('timesheets statusCode: %s %s', response.statusMessage, response.statusCode);
+                logger.info('timesheets body: %s', body);
+                if ( response.statusCode != 200 ) {
+                    logger.error(response.statusCode + ' on entry with date '+entryDate+' ,description '+notes);
+                    logger.error('   this is due to:' + response.statusMessage);
+                    defer.reject(error);
+                }
                 defer.resolve('timesheets statusCode: ' + response.statusMessage + ' ' + response.statusCode);
             }
         });
@@ -376,7 +386,7 @@ function parse(line, summary) {
         logger.info("task mapping %s", JSON.stringify(tasks, null, 4));
         return;
     }
-    if (line.match(/^\d+\/\d+$/)) {
+    if (line.lastIndexOf('/')>0) {
         current = line;
         summary[current] = {
             daytotal: 0
