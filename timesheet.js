@@ -39,7 +39,7 @@ if (process.env.hasOwnProperty('LOG_LEVEL')) {
 var colorMap = new Map();
 
 var datafile = 'data.txt';
-process.argv.forEach(function(val, index, array) {
+process.argv.forEach(function (val, index, array) {
     if (index > 1) {
         if (val === '-h' || val === '--help') {
             console.log(help);
@@ -50,7 +50,7 @@ process.argv.forEach(function(val, index, array) {
 });
 
 processFile(datafile);
-fs.watchFile(datafile, function(curr, prev) {
+fs.watchFile(datafile, function (curr, prev) {
     processFile(datafile);
 });
 
@@ -62,8 +62,8 @@ function processFile(filename) {
         input: require('fs').createReadStream(filename)
     });
 
-    lineReader.on('line', function(input) { parse(input, summary) });
-    lineReader.on('close', function() {
+    lineReader.on('line', function (input) { parse(input, summary) });
+    lineReader.on('close', function () {
         totals = {};
         for (var day in summary) {
             if (summary.hasOwnProperty(day)) {
@@ -104,7 +104,7 @@ function displayGrid(summary, totals) {
     }
     for (var projectKey in projectHoursByDay) {
         console.log(colorByKey(projectKey, ('     ' + projectKey + ': ').slice(-6) +
-            Object.keys(summary).map(function(day) {
+            Object.keys(summary).map(function (day) {
                 if (projectHoursByDay[projectKey][day]) {
                     return toHours(projectHoursByDay[projectKey][day]);
                 } else {
@@ -154,14 +154,16 @@ function parse(line, summary) {
     var parsedId, parsedComment, parsedMinutes;
 
     logger.log('info', line);
-    if (line[0] == '#')
+    if (line[0] == '#') // ignore comment lines
         return;
-    if (line.lastIndexOf('/')>0) {
+    if (line.match(/^\d+\/\d+(\/\d+)?$/)) { // dates - m/d or m/d/y "1/2" "1/2/2020" formats for dates
+        // match = line.match(/^\d+\/\d+(\/\d+)?$/);
+        // if (line.lastIndexOf('/')>0) {
         current = line;
         summary[current] = {
             'daytotal': 0
         };
-    } else if (line.match(/^([^,]+),(.+),\s?\b(\d+)$/)) {
+    } else if (line.match(/^([^,]+),(.+),\s?\b(\d+)$/)) { // entries - task,notes about it,240
         match = line.match(/^([^,]+),(.+),\s?\b(\d+)$/);
         parsedId = match[1];
         parsedComment = match[2];
