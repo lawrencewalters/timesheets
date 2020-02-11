@@ -38,27 +38,27 @@ var session = {},
     tasks = {};
 
 checkEnv(['TIMESHEET_FILE', 'TENROX_HOST', 'TENROX_ORG', 'TENROX_USER', 'TENROX_PASS'])
-    .then(function(result) {
+    .then(function (result) {
         return processFile(process.env.TIMESHEET_FILE);
     })
-    .then(function(result) {
+    .then(function (result) {
         summarizedEntries = result;
         return getSession(process.env.TENROX_HOST,
             process.env.TENROX_ORG,
             process.env.TENROX_USER,
             process.env.TENROX_PASS)
     })
-    .then(function(result) {
+    .then(function (result) {
         session = result;
         return getUniqueUserId(session);
     })
-    .then(function(uniqueUserId) {
+    .then(function (uniqueUserId) {
         return getTimesheetInfo(session, uniqueUserId, parseDate(Object.keys(summarizedEntries)[0]));
     })
-    .then(function(timesheetInfo) {
+    .then(function (timesheetInfo) {
         return deleteCurrentEntries(session, timesheetInfo);
     })
-    .then(function(timesheetInfo) {
+    .then(function (timesheetInfo) {
         return postEntries(session,
             summarizedEntries,
             timesheetInfo.timesheetId,
@@ -66,7 +66,7 @@ checkEnv(['TIMESHEET_FILE', 'TENROX_HOST', 'TENROX_ORG', 'TENROX_USER', 'TENROX_
             timesheetInfo.timesheet.EndDate);
     })
     .then(logger.info)
-    .catch(function(error) {
+    .catch(function (error) {
         logger.error("Error: " + error);
     });
 
@@ -124,10 +124,10 @@ function deleteEntry(session, entryId) {
     defer = q.defer();
     session.headers["Content-Type"] = 'application/x-www-form-urlencoded';
     request.delete({
-            headers: session.headers,
-            url: "https://" + session.host + "/TEnterprise/api/v2/TimeEntries/" + entryId
-        },
-        function(error, response, body) {
+        headers: session.headers,
+        url: "https://" + session.host + "/TEnterprise/api/v2/TimeEntries/" + entryId
+    },
+        function (error, response, body) {
             if (error) {
                 defer.reject(error);
             } else {
@@ -191,8 +191,8 @@ function parseDate(day) {
     var entryDate = new Date();
     entryDate.setMonth(Number.parseInt(day.substring(0, day.indexOf('/'))) - 1);
     entryDate.setDate(Number.parseInt(day.substring(day.indexOf('/') + 1)));
-    if (day.lastIndexOf('/')>2) {
-        entryDate.setFullYear(Number.parseInt(day.substring(day.lastIndexOf('/')+1)));
+    if (day.lastIndexOf('/') > 2) {
+        entryDate.setFullYear(Number.parseInt(day.substring(day.lastIndexOf('/') + 1)));
     }
     return entryDate;
 }
@@ -217,38 +217,38 @@ function postTimeWithNotes(session, timesheetId, taskId, notes, entryDate, minut
             "IsPublic": true
         }],
         "KeyValues": [{
-                "IsAttribute": true,
-                "Property": "task",
-                "Value": taskId
-            },
-            {
-                "IsAttribute": false,
-                "Property": "EntryDate",
-                "Value": ("0" + (entryDate.getMonth() + 1)).slice(-2) + '/' + ("0" + entryDate.getDate()).slice(-2) + '/' + entryDate.getFullYear()
-            },
-            {
-                "IsAttribute": false,
-                "Property": "RegularTime",
-                "Value": minutes * 60
-            }
+            "IsAttribute": true,
+            "Property": "task",
+            "Value": taskId
+        },
+        {
+            "IsAttribute": false,
+            "Property": "EntryDate",
+            "Value": ("0" + (entryDate.getMonth() + 1)).slice(-2) + '/' + ("0" + entryDate.getDate()).slice(-2) + '/' + entryDate.getFullYear()
+        },
+        {
+            "IsAttribute": false,
+            "Property": "RegularTime",
+            "Value": minutes * 60
+        }
         ]
     };
     session.headers["Content-Type"] = 'application/x-www-form-urlencoded';
     logger.debug(JSON.stringify(putbody));
     request.put({
-            headers: session.headers,
-            url: "https://" + session.host + "/TEnterprise/api/Timesheets/" + timesheetId + "?property=TIMEENTRYLITE",
-            body: "=" + encodeURIComponent(JSON.stringify(putbody))
-        },
-        function(error, response, body) {
+        headers: session.headers,
+        url: "https://" + session.host + "/TEnterprise/api/Timesheets/" + timesheetId + "?property=TIMEENTRYLITE",
+        body: "=" + encodeURIComponent(JSON.stringify(putbody))
+    },
+        function (error, response, body) {
             if (error) {
                 defer.reject(error);
-                logger.error("error: "+error);
+                logger.error("error: " + error);
             } else {
                 logger.info('timesheets statusCode: %s %s', response.statusMessage, response.statusCode);
                 logger.info('timesheets body: %s', body);
-                if ( response.statusCode != 200 ) {
-                    logger.error(response.statusCode + ' on entry with date '+entryDate+' ,description '+notes);
+                if (response.statusCode != 200) {
+                    logger.error(response.statusCode + ' on entry with date ' + entryDate + ' ,description ' + notes);
                     logger.error('   this is due to:' + response.statusMessage);
                     defer.reject(error);
                 }
@@ -271,11 +271,11 @@ function getSession(host, org, user, password) {
     defer = q.defer()
     logger.info('getting new session token');
     request.post({
-            url: 'https://' + host + '/TEnterprise/api/token',
-            headers: { OrgName: org },
-            body: 'grant_type=password&username=' + user + '&password=' + encodeURIComponent(password)
-        },
-        function(error, response, body) {
+        url: 'https://' + host + '/TEnterprise/api/token',
+        headers: { OrgName: org },
+        body: 'grant_type=password&username=' + user + '&password=' + encodeURIComponent(password)
+    },
+        function (error, response, body) {
             if (error) {
                 defer.reject(error);
             } else {
@@ -305,10 +305,10 @@ function getUniqueUserId(session) {
     logger.info('getting unique user id');
     logger.debug(" session: %s", JSON.stringify(session, null, 4));
     request.get({
-            headers: session.headers,
-            url: "https://" + session.host + "/TEnterprise/api/v2/Users/?$filter=LoginName eq '" + session.user + "'"
-        },
-        function(error, response, body) {
+        headers: session.headers,
+        url: "https://" + session.host + "/TEnterprise/api/v2/Users/?$filter=LoginName eq '" + session.user + "'"
+    },
+        function (error, response, body) {
             if (error) {
                 defer.reject(error);
             } else if (body === 'Invalid token.') {
@@ -334,13 +334,13 @@ function getTimesheetInfo(session, uniqueUserId, date) {
     defer = q.defer();
     logger.info("getting timesheet info");
     request.get({
-            headers: session.headers,
-            url: "https://" + session.host + "/TEnterprise/api/Timesheets/?UserId=" + uniqueUserId +
-                "&anyDate=" + ("0" + (date.getMonth() + 1)).slice(-2) + '-' +
-                ("0" + date.getDate()).slice(-2) + '-' +
-                date.getFullYear()
-        },
-        function(error, response, body) {
+        headers: session.headers,
+        url: "https://" + session.host + "/TEnterprise/api/Timesheets/?UserId=" + uniqueUserId +
+            "&anyDate=" + ("0" + (date.getMonth() + 1)).slice(-2) + '-' +
+            ("0" + date.getDate()).slice(-2) + '-' +
+            date.getFullYear()
+    },
+        function (error, response, body) {
             logger.debug("Request path: " + this.uri.href);
             if (error) {
                 defer.reject(error);
@@ -384,15 +384,15 @@ function processFile(filename) {
     try {
         var lineReader = readline.createInterface({
             input: fs.createReadStream(filename)
-                .on('error', function(err) {
+                .on('error', function (err) {
                     defer.reject('Error creating read stream for file ' + filename + ': ' + err);
                 })
         });
-        lineReader.on('line', function(input) { parse(input, summary) });
-        lineReader.on('close', function() {
+        lineReader.on('line', function (input) { parse(input, summary) });
+        lineReader.on('close', function () {
             defer.resolve(summary);
         });
-        lineReader.on('error', function(err) {
+        lineReader.on('error', function (err) {
             defer.reject('Error reading file lines for file ' + filename + ': ' + err);
         })
     } catch (err) {
@@ -409,23 +409,23 @@ function processFile(filename) {
  */
 function parse(line, summary) {
     logger.info(line);
-    if (line[0] == '#')
+    if (line[0] == '#') // ignore comment lines
         return;
-    if (line.match(/^tasks=(.+)$/)) {
+    if (line.match(/^tasks=(.+)$/)) { // task definition lines
         match = line.match(/^tasks=(.+)$/);
         logger.debug(match[1]);
-        match[1].split(",").map(function(val) {
+        match[1].split(",").map(function (val) {
             tasks[val.split(":")[0].replace(/\"/g, "").trim()] = val.split(":")[1].replace(/\"/g, "").trim();
         });
         logger.info("task mapping %s", JSON.stringify(tasks, null, 4));
         return;
     }
-    if (line.lastIndexOf('/')>0) {
+    if (line.match(/^\d+\/\d+(\/\d+)?$/)) { // dates - m/d or m/d/y "1/2" "1/2/2020" formats for dates
         current = line;
         summary[current] = {
             daytotal: 0
         };
-    } else if (line.match(/^([^,]+),(.+),\s?\b(\d+)$/)) {
+    } else if (line.match(/^([^,]+),(.+),\s?\b(\d+)$/)) { // entries - task,notes about it,240
         match = line.match(/^([^,]+),(.+),\s?\b(\d+)$/);
         logger.info(' id: %s\n notes: %s\n minutes: %s', match[1], match[2], match[3]);
 
