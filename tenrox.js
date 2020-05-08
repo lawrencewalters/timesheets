@@ -27,7 +27,7 @@ if (process.env.hasOwnProperty('LOG_LEVEL')) {
 
 const logger = winston.createLogger({
     level: winston.level,
-    format: winston.format.combine(winston.format.splat(), winston.format.simple()),
+    format: winston.format.combine(winston.format.colorize(),winston.format.splat(),winston.format.simple()),
     transports: [
         new winston.transports.Console()
     ]
@@ -93,6 +93,7 @@ function checkEnv(inputs) {
  */
 async function deleteCurrentEntries(session, timesheetInfo) {
     var defer = q.defer();
+    logger.warn('Deleting previous timesheet entries');
     for (var i = 0; i < timesheetInfo.timesheet.TimeEntries.length; i++) {
         var entry = timesheetInfo.timesheet.TimeEntries[i];
         logger.info("Deleting previous entry: %s / %s / %s (CreationDate: %s, in timesheet %s)",
@@ -155,6 +156,7 @@ function deleteEntry(session, entryId) {
  */
 async function postEntries(session, entries, timesheetId, timesheetStartDate, timesheetEndDate) {
     var defer = q.defer();
+    logger.warn('Posting entries');
     for (var day in entries) {
         logger.debug("Day: " + day);
         var entryDate = parseDate(day);
@@ -170,7 +172,7 @@ async function postEntries(session, entries, timesheetId, timesheetStartDate, ti
                 var dStart = new Date(timesheetStartDate);
                 if (d1.getTime() > dEnd.getTime() ||
                     d1.getTime() < dStart.getTime()) {
-                    logger.warn("Entry skipped. Entry date (%s) is outside of this timesheet time frame (%s - %s) - please fix and retry",
+                    logger.error("Entry skipped. Entry date (%s) is outside of this timesheet time frame (%s - %s) - please fix and retry",
                         entryDate,
                         timesheetStartDate,
                         timesheetEndDate);
@@ -207,7 +209,7 @@ function parseDate(day) {
  * @param {int} minutes 
  */
 function postTimeWithNotes(session, timesheetId, taskId, notes, entryDate, minutes) {
-    logger.info("postTimeWithNotes %s %s %s %s", taskId, notes, entryDate, minutes);
+    logger.info("postTimeWithNotes taskId:%s %s %s %s", taskId, notes, entryDate, minutes);
     defer = q.defer();
     var putbody = {
         "Notes": [{
@@ -369,18 +371,24 @@ function getTimesheetInfo(session, uniqueUserId, date) {
 function showAssignmentDetails(assignments) {
     logger.info("Current Assignments:");
     Object.keys(assignments).forEach(key => {
-        logger.info("%s %s %s", assignments[key].TaskUid,
+        logger.info("key:%s TaskUid:%s AssignmentName:%s ProjectName:%s", key, assignments[key].TaskUid,
             assignments[key].AssignmentName,
             assignments[key].ProjectName);
     })
 }
 
+/**
+ * Get the entries from a file
+ * @param {string} filename path to file with timesheet entries 
+ * @returns {object} promise with summary keyed map of date => { daytotal, project key => {notes, minutes}} (output from parse())
+ */
 function processFile(filename) {
     defer = q.defer();
     var summary = {};
     var current = '';
     var daytotal = 0;
 
+    logger.warn('Reading file %s', filename);
     try {
         var lineReader = readline.createInterface({
             input: fs.createReadStream(filename)
@@ -388,7 +396,11 @@ function processFile(filename) {
                     defer.reject('Error creating read stream for file ' + filename + ': ' + err);
                 })
         });
-        lineReader.on('line', function (input) { parse(input, summary) });
+        lineReader.on('line', function (input) { 
+            if(!parse(input, summary)) {
+                defer.reject('file parsing failed for file "' + filename + '"');
+            } 
+        });
         lineReader.on('close', function () {
             defer.resolve(summary);
         });
@@ -406,11 +418,12 @@ function processFile(filename) {
  * read a single line of timesheet data
  * @param {string} line single line of timesheet data file, represents project key, notes, minutes OR a date OR a tasks list
  * @param {object} summary keyed map of date => { daytotal, project key => {notes, minutes}}
+ * @returns {boolean} true when successful, false on error
  */
 function parse(line, summary) {
     logger.info(line);
     if (line[0] == '#') // ignore comment lines
-        return;
+        return true;
     if (line.match(/^tasks=(.+)$/)) { // task definition lines
         match = line.match(/^tasks=(.+)$/);
         logger.debug(match[1]);
@@ -418,7 +431,7 @@ function parse(line, summary) {
             tasks[val.split(":")[0].replace(/\"/g, "").trim()] = val.split(":")[1].replace(/\"/g, "").trim();
         });
         logger.info("task mapping %s", JSON.stringify(tasks, null, 4));
-        return;
+        return true;
     }
     if (line.match(/^\d+\/\d+(\/\d+)?$/)) { // dates - m/d or m/d/y "1/2" "1/2/2020" formats for dates
         current = line;
@@ -430,6 +443,12 @@ function parse(line, summary) {
         logger.info(' id: %s\n notes: %s\n minutes: %s', match[1], match[2], match[3]);
 
         parsedId = match[1];
+        
+        if(!tasks.hasOwnProperty(parsedId)) {
+            var message = 'Timesheet entry with id "' + parsedId + '" does not exist in task definitions. This will fail on submission. Please check your entry key against the tasks defined in the file to make sure they match\nEntry text: "' + line + '"';
+            logger.error(message);
+            return false;
+        }
         parsedComment = match[2];
         parsedMinutes = Number(match[3]);
 
@@ -445,4 +464,5 @@ function parse(line, summary) {
         }
         summary[current].daytotal += parsedMinutes;
     }
+    return true;
 }
